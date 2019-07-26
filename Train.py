@@ -62,9 +62,9 @@ if __name__ == '__main__':
         os.makedirs('checkpoints')
 
     simulator = SimulatorFactory.getInstance(args.simulator)
+    trainer = DQN(QNetwork(simulator.dState(), simulator.nActions()))
     try:
         logger.info('Starting training.')
-        trainer = DQN(QNetwork(simulator.dState(), simulator.nActions()))
         trainer.train(args)
     except KeyboardInterrupt:
         logger.info('KeyboardInterrupt received. Trying to stop threads.')
