@@ -12,7 +12,7 @@ parser.add_argument('--network', dest='networkPath', help='Path to the save trai
 parser.add_argument('--lr', dest='lr', default=1e-4, help='', type=float)
 parser.add_argument('--eps', dest='eps', default=0.999, type=float)
 parser.add_argument('--batch', dest='batchSize', default=32, type=int)
-parser.add_argument('--itr', dest='itr', default=100, type=int, help='Number of iterations for training [0 for infinite]')
+parser.add_argument('--itr', dest='itr', default=0, type=int, help='Number of iterations for training [0 for infinite]')
 parser.add_argument('--threads', dest='threads', default=4, type=int)
 parser.add_argument('--gamma', dest='gamma', default=0.99, type=float)
 parser.add_argument('--frequency', dest='frequency', default=50, type=int)

@@ -64,6 +64,8 @@ class ExperienceCollector(object):
 
                     if gamma ** episodeLength < 0.1:
                         break
+
+                logger.debug('Episode Length: %s \tEpisode Reward: %s', episodeLength, episodeReward)
             finally:
                 self.lock.release()
 
