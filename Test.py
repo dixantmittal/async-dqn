@@ -28,7 +28,7 @@ logger.info('List of Parameters:\n'
 
 if __name__ == '__main__':
     simulator = SimulatorFactory.getInstance(args.simulator)
-    network = QNetwork(simulator.nStates(), simulator.nActions())
+    network = QNetwork(simulator.dState(), simulator.nActions())
     network.load(args.networkPath)
 
     network.to(args.device)

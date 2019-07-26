@@ -14,10 +14,15 @@ class ISimulator(object):
     def nActions(self):
         raise NotImplementedError
 
+    # shape of the environment state [int for vector state; (tuple) for image]
     @abstractmethod
-    def nStates(self):
+    def dState(self):
         raise NotImplementedError
 
     @abstractmethod
     def sampleAction(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def prettifyState(self, rawState):
         raise NotImplementedError

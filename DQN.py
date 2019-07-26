@@ -47,7 +47,8 @@ class DQN(object):
         device = args.device
 
         simulator = SimulatorFactory.getInstance(args.simulator)
-        nStates = simulator.nStates()
+        dStates = simulator.dState()
+        nStates = numpy.prod(dStates)
         nActions = simulator.nActions()
 
         # Initialise Metrics
@@ -95,6 +96,9 @@ class DQN(object):
             state, action, next_state, reward, terminate = torch.split(batch, [nStates, 1, nStates, 1, 1], dim=1)
 
             action = to_one_hot(action, nActions).to(device)
+
+            state = simulator.prettifyState(state).to(device)
+            next_state = simulator.prettifyState(next_state).to(device)
 
             # find the target value
             target = reward + terminate * gamma * targetNetwork(next_state).max(dim=1)[0].unsqueeze(dim=1)
