@@ -64,8 +64,9 @@ if __name__ == '__main__':
     simulator = SimulatorFactory.getInstance(args.simulator)
     try:
         logger.info('Starting training.')
-        DQN.train(QNetwork(simulator.nStates(), simulator.nActions()), args)
+        trainer = DQN(QNetwork(simulator.nStates(), simulator.nActions()))
+        trainer.train(args)
     except KeyboardInterrupt:
         logger.info('KeyboardInterrupt received. Trying to stop threads.')
     finally:
-        DQN.stop()
+        trainer.stop()

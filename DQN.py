@@ -5,109 +5,43 @@ import numpy
 import torch
 
 import Logger
+from ExperienceCollector import ExperienceCollector
 from ReplayMemory import ReplayMemory
 from SimulatorFactory import SimulatorFactory
 
 logger = Logger.logger
 
 
-class ExperienceCollector(object):
-    def __init__(self, id, network, args):
-        self.network = network
-        self.args = args
-        self.name = 'ExperienceCollector_{}'.format(id)
-
-        self.stopThread = False
-        self.lock = threading.Lock()
-        self.thread = threading.Thread(target=self.collect, name=self.name)
-        self.thread.start()
-        logger.info('Started thread: %s', self.name)
-
-    def collect(self):
-        # Parameters
-        eps = self.args.eps
-        gamma = self.args.gamma
-        device = self.args.device
-
-        simulator = SimulatorFactory.getInstance(self.args.simulator)
-        buffer = ReplayMemory(self.args.memory)
-
-        itr = 0
-        while not self.stopThread:
-            eps = max(0.1, eps ** itr)
-
-            done = False
-            episodeReward = 0
-            episodeLength = 0
-
-            self.lock.acquire()
-            try:
-                policyNetwork = self.network.to(device)
-
-                # Reset simulator for new episode
-                logger.debug('Starting new episode')
-
-                state = simulator.reset()
-                while not done and not DQN.stopExperienceCollectors:
-                    action = simulator.sampleAction()
-                    if numpy.random.rand() > eps:
-                        action = policyNetwork(torch.Tensor(state).to(device)).argmax().item()
-
-                    # take action and get next state
-                    nextState, reward, done, _ = simulator.step(action)
-
-                    # store into experience memory
-                    buffer.push(state, action, nextState, reward, int(not done))
-
-                    state = nextState
-                    episodeReward += reward * gamma ** episodeLength
-                    episodeLength += 1
-
-                    if gamma ** episodeLength < 0.1:
-                        break
-            finally:
-                self.lock.release()
-
-        buffer.stop()
-        logger.info('Stopped thread: %s', self.name)
-
-    def stop(self):
-        self.stopThread = True
-        self.thread.join()
+def to_one_hot(indices, n_classes):
+    one_hot = torch.zeros(len(indices), n_classes)
+    one_hot[torch.arange(len(indices)), indices.to(torch.long).squeeze()] = 1
+    return one_hot
 
 
 class DQN(object):
-    experienceCollectors = []
-    stopExperienceCollectors = False
-    threadSync = None
-    stopSyncThread = False
 
-    network = None
+    def __init__(self, network):
+        self.experienceCollectors = []
 
-    @staticmethod
-    def to_one_hot(indices, n_classes):
-        one_hot = torch.zeros(len(indices), n_classes)
-        one_hot[torch.arange(len(indices)), indices.to(torch.long).squeeze()] = 1
-        return one_hot
+        self.threadSync = None
+        self.stopSyncThread = False
 
-    @staticmethod
-    def syncNetwork():
-        while not DQN.stopSyncThread:
-            for experienceCollector in DQN.experienceCollectors:
+        self.network = network
+
+    def syncNetwork(self):
+        while not self.stopSyncThread:
+            for experienceCollector in self.experienceCollectors:
                 logger.info('Syncing policy network with %s', experienceCollector.name)
                 experienceCollector.lock.acquire()
                 try:
-                    experienceCollector.network = DQN.network.copy()
+                    experienceCollector.network = self.network.copy()
                 finally:
                     experienceCollector.lock.release()
             time.sleep(2)
 
         logger.info('Stopped thread: Network Sync')
 
-    @staticmethod
-    def train(network, args):
-        DQN.network = network
-
+    def train(self, args):
         # Parameters
         gamma = args.gamma
         device = args.device
@@ -122,23 +56,24 @@ class DQN(object):
             'best_test_performance': -numpy.inf
         }
 
-        DQN.experienceCollectors = [ExperienceCollector(i, network, args) for i in range(args.threads)]
-        DQN.threadSync = threading.Thread(target=DQN.syncNetwork, name='SyncThread')
-        DQN.threadSync.start()
+        self.experienceCollectors = [ExperienceCollector(i, self.network, args) for i in range(args.threads)]
+        self.threadSync = threading.Thread(target=self.syncNetwork, name='SyncThread')
+        self.threadSync.start()
         logger.info('Started thread: Network Sync')
 
+        # Wait while ReplayMemory collects some experiences.
         while ReplayMemory.memoryEmpty:
             time.sleep(0.1)
 
         # initialise a test set
-        logger.debug('Loading test set')
+        logger.info('Loading test set')
         test = []
         for i in range(args.testSize):
             test.append(simulator.reset())
-        logger.debug('Test set loaded!')
+        logger.info('Test set loaded!')
         test = torch.Tensor(test).to(device)
 
-        policyNetwork = network.to(device)
+        policyNetwork = self.network.to(device)
         targetNetwork = policyNetwork.copy().to(device)
 
         # initialise optimiser and loss function
@@ -159,7 +94,7 @@ class DQN(object):
             batch = torch.Tensor(batch).to(device)
             state, action, next_state, reward, terminate = torch.split(batch, [nStates, 1, nStates, 1, 1], dim=1)
 
-            action = DQN.to_one_hot(action, nActions).to(device)
+            action = to_one_hot(action, nActions).to(device)
 
             # find the target value
             target = reward + terminate * gamma * targetNetwork(next_state).max(dim=1)[0].unsqueeze(dim=1)
@@ -193,12 +128,10 @@ class DQN(object):
                 if args.checkpoints:
                     policyNetwork.save('checkpoints/Q_network_{}.pth'.format(metrics['test_set'][-1]))
 
-    @staticmethod
-    def stop():
-        DQN.stopExperienceCollectors = True
-        for collector in DQN.experienceCollectors:
+    def stop(self):
+        for collector in self.experienceCollectors:
             collector.stop()
 
-        DQN.stopSyncThread = True
-        if DQN.threadSync is not None:
-            DQN.threadSync.join()
+        self.stopSyncThread = True
+        if self.threadSync is not None:
+            self.threadSync.join()

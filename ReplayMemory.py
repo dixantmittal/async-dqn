@@ -21,9 +21,9 @@ class ReplayMemory(object):
 
         self.shutdownSync = False
 
-        self.syncThread = threading.Thread(target=self.sync)
+        self.syncThread = threading.Thread(target=self.sync, name='ReplayMemorySync_{}'.format(id(self)))
         self.syncThread.start()
-        logger.debug('Started thread: Memory Sync')
+        logger.info('Started thread: Memory Sync')
 
     def sync(self):
         while not self.shutdownSync:
