@@ -4,6 +4,11 @@ import torch.nn as nn
 import Logger
 
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+
 class QNetwork(nn.Module):
     def __init__(self, inDims, outDims):
         super(QNetwork, self).__init__()
@@ -12,14 +17,25 @@ class QNetwork(nn.Module):
         self.outDims = outDims
 
         self.fc = nn.Sequential(
-            nn.Linear(in_features=inDims, out_features=512),
+            nn.Conv2d(3, 32, 7, stride=3),
             nn.ReLU(),
-            nn.Linear(in_features=512, out_features=512),
+            nn.Conv2d(32, 32, 7, stride=3),
             nn.ReLU(),
-            nn.Linear(in_features=512, out_features=outDims)
+            nn.Conv2d(32, 64, 5, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 5, stride=2),
+            nn.ReLU(),
+            Flatten(),
+            nn.Linear(in_features=64 * 4, out_features=256),
+            nn.ReLU(),
+            nn.Linear(in_features=256, out_features=256),
+            nn.ReLU(),
+            nn.Linear(in_features=256, out_features=outDims)
         )
 
     def forward(self, x):
+        x = torch.transpose(x, 1, 3)
+        x = torch.transpose(x, 2, 3)
         return self.fc(x)
 
     def save(self, filename):
