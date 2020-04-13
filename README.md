@@ -1,5 +1,5 @@
 # Q-Network
-Asynchronous implementation of __Deep Q-Network__ to utilise multi-core + multi-gpu architectures.
+Asynchronous implementation of __DQN__ to utilise multi-core + multi-gpu architectures.
 
 # Requirements
 * Python 3
