@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--environment', default='cartpole', help='Environment to use for training [default = cartpole]')
     parser.add_argument('--save_model', default='', help='Path to save the model [default = '']')
     parser.add_argument('--load_model', default='', help='Path to load the model [default = '']')
-    parser.add_argument('--n_optimisers', default=1, type=int, help='Number of optimisers [default = 1]')
+    parser.add_argument('--n_workers', default=1, type=int, help='Number of workers [default = 1]')
     parser.add_argument('--target_update_frequency', default=10, type=int, help='Frequency for syncing target network [default = 10]')
     parser.add_argument('--checkpoint_frequency', default=10, type=int, help='Frequency for creating checkpoints [default = 10]')
 
@@ -37,8 +37,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    args.training = True
-
     SIMULATOR, NETWORK = environments[args.environment]
     model = NETWORK()
     model.load(args.load_model)
@@ -46,7 +44,7 @@ if __name__ == '__main__':
 
     lock = mp.Lock()
 
-    processes = [mp.Process(target=optimiser, args=(idx, model, SIMULATOR, args, lock)) for idx in range(args.n_optimisers)]
+    processes = [mp.Process(target=optimiser, args=(idx, model, SIMULATOR, args, lock)) for idx in range(args.n_workers)]
     processes.append(mp.Process(target=checkpoint, args=(model, args)))
 
     [p.start() for p in processes]
