@@ -105,3 +105,7 @@ venv.bak/
 
 .idea
 checkpoint/
+data/
+runs/
+trained/
+logs/
